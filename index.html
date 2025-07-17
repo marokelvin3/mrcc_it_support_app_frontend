@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRCC IT Support App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header class="app-header">
+            <div class="logo-container">
+                <img src="logo.png" alt="MRCC Hospital Logo" class="hospital-logo">
+            </div>
+            <div class="header-right-content">
+                <h1 class="app-title">MRCC IT Support App</h1>
+                <nav v-if="isAuthenticated">
+                    <button @click="viewTickets" :class="{ 'active-nav': currentView === 'myTickets' || currentView === 'allTickets' }">My Tickets</button>
+                    <button v-if="userRole === 'admin'" @click="viewAllTickets" :class="{ 'active-nav': currentView === 'allTickets' }">All Tickets (IT)</button>
+                    <button v-if="userRole === 'admin'" @click="viewUsers" :class="{ 'active-nav': currentView === 'users' }">Manage Users</button>
+                    <button @click="createTicket" :class="{ 'active-nav': currentView === 'createTicket' }">Create New Ticket</button>
+                    <button @click="logout">Logout ({{ username }})</button>
+                </nav>
+            </div>
+        </header>
+
+        <div v-if="currentView === 'login'" class="login-container card">
+            <h2>Login</h2>
+            <form @submit.prevent="handleLogin">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" v-model="loginForm.username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" v-model="loginForm.password" required>
+                </div>
+                <button type="submit" class="button-primary">Login</button>
+            </form>
+            <p v-if="loginError" class="error-message">{{ loginError }}</p>
+        </div>
+
+        <div v-if="currentView === 'createTicket'" class="create-ticket-container card">
+            <h2>Create New IT Support Ticket</h2>
+            <form @submit.prevent="submitTicket">
+                <div class="form-group">
+                    <label for="requesterName">Requester Name:</label>
+                    <input type="text" id="requesterName" :value="fullName" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="department">Department:</label>
+                    <select id="department" v-model="newTicket.department_id" required>
+                        <option value="">Select Department</option>
+                        <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="issueType">Issue Type:</label>
+                    <select id="issueType" v-model="newTicket.issue_type_id" required>
+                        <option value="">Select Issue Type</option>
+                        <option v-for="type in issueTypes" :key="type.id" :value="type.id">{{ type.name }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="subject">Subject:</label>
+                    <input type="text" id="subject" v-model="newTicket.subject" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <textarea id="description" v-model="newTicket.description" rows="5" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="urgency">Urgency:</label>
+                    <select id="urgency" v-model="newTicket.urgency">
+                        <option>Low</option>
+                        <option>Medium</option>
+                        <option>High</option>
+                        <option>Critical</option>
+                    </select>
+                </div>
+                <button type="submit" class="button-primary">Submit Ticket</button>
+            </form>
+            <p v-if="ticketMessage" :class="{ 'success-message': ticketSuccess, 'error-message': !ticketSuccess }">{{ ticketMessage }}</p>
+        </div>
+
+        <div v-if="currentView === 'myTickets'" class="ticket-list-container card">
+            <h2>My Submitted Tickets</h2>
+            <div v-if="myTickets.length > 0">
+                <div v-for="ticket in myTickets" :key="ticket.id" class="ticket-item" @click="viewTicketDetails(ticket.id)">
+                    <div class="ticket-header">
+                        <h3>Ticket #{{ ticket.id }}: {{ ticket.subject }}</h3>
+                        <span :class="['status-badge', ticket.status.toLowerCase().replace(' ', '-')]">{{ ticket.status }}</span>
+                    </div>
+                    <p><strong>Department:</strong> {{ ticket.department_name }}</p>
+                    <p><strong>Issue Type:</strong> {{ ticket.issue_type_name }}</p>
+                    <p><strong>Urgency:</strong> {{ ticket.urgency }}</p>
+                    <p><strong>Created:</strong> {{ new Date(ticket.created_at).toLocaleString() }}</p>
+                </div>
+            </div>
+            <p v-else class="no-records">You haven't submitted any tickets yet.</p>
+        </div>
+
+        <div v-if="currentView === 'allTickets'" class="ticket-list-container card">
+            <h2>All IT Support Tickets</h2>
+            <div class="filter-controls">
+                <div class="form-group">
+                    <label for="filterStatus">Status:</label>
+                    <select id="filterStatus" v-model="filters.status" @change="loadAllTickets">
+                        <option value="">All</option>
+                        <option>Open</option>
+                        <option>In Progress</option>
+                        <option>Resolved</option>
+                        <option>Closed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filterDepartment">Department:</label>
+                    <select id="filterDepartment" v-model="filters.department_id" @change="loadAllTickets">
+                        <option value="">All</option>
+                        <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filterIssueType">Issue Type:</label>
+                    <select id="filterIssueType" v-model="filters.issue_type_id" @change="loadAllTickets">
+                        <option value="">All</option>
+                        <option v-for="type in issueTypes" :key="type.id" :value="type.id">{{ type.name }}</option>
+                    </select>
+                </div>
+                <div class="form-group search-bar">
+                    <input type="text" placeholder="Search by subject, description, requester" v-model="filters.search" @keyup.enter="loadAllTickets">
+                    <button @click="loadAllTickets" class="button-secondary">Search</button>
+                </div>
+            </div>
+
+            <div v-if="allTickets.length > 0">
+                <div v-for="ticket in allTickets" :key="ticket.id" class="ticket-item" @click="viewTicketDetails(ticket.id)">
+                    <div class="ticket-header">
+                        <h3>Ticket #{{ ticket.id }}: {{ ticket.subject }}</h3>
+                        <span :class="['status-badge', ticket.status.toLowerCase().replace(' ', '-')]">{{ ticket.status }}</span>
+                    </div>
+                    <p><strong>Requester:</strong> {{ ticket.requester_name }} ({{ ticket.department_name }})</p>
+                    <p><strong>Issue Type:</strong> {{ ticket.issue_type_name }}</p>
+                    <p><strong>Urgency:</strong> {{ ticket.urgency }}</p>
+                    <p><strong>Assigned To:</strong> {{ ticket.assigned_to_name || 'Unassigned' }}</p>
+                    <p><strong>Created:</strong> {{ new Date(ticket.created_at).toLocaleString() }}</p>
+                </div>
+            </div>
+            <p v-else class="no-records">No tickets found matching your criteria.</p>
+        </div>
+
+        <div v-if="currentView === 'ticketDetails' && selectedTicket" class="ticket-details-container card">
+            <button @click="goBackToList" class="button-back">&larr; Back to Tickets</button>
+            <h2>Ticket Details #{{ selectedTicket.id }}</h2>
+            <div class="detail-section">
+                <p><strong>Requester:</strong> {{ selectedTicket.requester_name }} ({{ selectedTicket.requester_department }})</p>
+                <p><strong>Department:</strong> {{ selectedTicket.department_name }}</p>
+                <p><strong>Issue Type:</strong> {{ selectedTicket.issue_type_name }}</p>
+                <p><strong>Subject:</strong> {{ selectedTicket.subject }}</p>
+                <p><strong>Description:</strong> {{ selectedTicket.description }}</p>
+                <p><strong>Urgency:</strong> <span :class="['urgency-badge', selectedTicket.urgency.toLowerCase()]">{{ selectedTicket.urgency }}</span></p>
+                <p><strong>Status:</strong> <span :class="['status-badge', selectedTicket.status.toLowerCase().replace(' ', '-')]">{{ selectedTicket.status }}</span></p>
+                <p><strong>Assigned To:</strong> {{ selectedTicket.assigned_to_name || 'Unassigned' }}</p>
+                <p><strong>Created At:</strong> {{ new Date(selectedTicket.created_at).toLocaleString() }}</p>
+                <p><strong>Last Updated:</strong> {{ new Date(selectedTicket.updated_at).toLocaleString() }}</p>
+                <p v-if="selectedTicket.resolution_notes"><strong>Resolution Notes:</strong> {{ selectedTicket.resolution_notes }}</p>
+            </div>
+
+            <div v-if="userRole === 'admin'" class="admin-actions card">
+                <h3>Admin Actions</h3>
+                <div class="form-group">
+                    <label for="updateStatus">Update Status:</label>
+                    <select id="updateStatus" v-model="updateTicketForm.status">
+                        <option>Open</option>
+                        <option>In Progress</option>
+                        <option>Resolved</option>
+                        <option>Closed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="assignTo">Assign To:</label>
+                    <select id="assignTo" v-model="updateTicketForm.assigned_to_id">
+                        <option :value="null">Unassigned</option>
+                        <option v-for="user in itUsers" :key="user.id" :value="user.id">{{ user.full_name || user.username }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="resolutionNotes">Resolution Notes:</label>
+                    <textarea id="resolutionNotes" v-model="updateTicketForm.resolution_notes" rows="3"></textarea>
+                </div>
+                <button @click="updateTicketDetails" class="button-primary">Save Changes</button>
+                <p v-if="updateTicketMessage" :class="{ 'success-message': updateTicketSuccess, 'error-message': !updateTicketSuccess }">{{ updateTicketMessage }}</p>
+            </div>
+
+            <div class="comments-section card">
+                <h3>Comments</h3>
+                <div v-if="selectedTicket.comments && selectedTicket.comments.length > 0">
+                    <div v-for="comment in selectedTicket.comments" :key="comment.id" class="comment-item">
+                        <p><strong>{{ comment.commenter_name }}:</strong> {{ comment.comment }}</p>
+                        <small>{{ new Date(comment.created_at).toLocaleString() }}</small>
+                    </div>
+                </div>
+                <p v-else class="no-records">No comments yet.</p>
+
+                <div class="add-comment">
+                    <h4>Add Comment</h4>
+                    <textarea v-model="newCommentText" rows="2" placeholder="Type your comment here..."></textarea>
+                    <button @click="addComment" class="button-secondary">Add Comment</button>
+                    <p v-if="commentMessage" :class="{ 'success-message': commentSuccess, 'error-message': !commentSuccess }">{{ commentMessage }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="currentView === 'users'" class="user-management-container card">
+            <h2>User Management</h2>
+            <div v-if="users.length > 0">
+                <div v-for="user in users" :key="user.id" class="user-item">
+                    <h3>{{ user.full_name || user.username }} <span class="user-role-badge">{{ user.role }}</span></h3>
+                    <p><strong>Username:</strong> {{ user.username }}</p>
+                    <p><strong>Department:</strong> {{ user.department || 'N/A' }}</p>
+                    <div class="user-actions">
+                        <div class="form-group">
+                            <label :for="'editRole-' + user.id">Role:</label>
+                            <select :id="'editRole-' + user.id" v-model="user.role" @change="updateUser(user.id, { role: user.role })">
+                                <option>staff</option>
+                                <option>admin</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label :for="'editDept-' + user.id">Department:</label>
+                            <input type="text" :id="'editDept-' + user.id" v-model="user.department" @blur="updateUser(user.id, { department: user.department })" placeholder="Enter department">
+                        </div>
+                        <div class="form-group">
+                            <label :for="'editFullName-' + user.id">Full Name:</label>
+                            <input type="text" :id="'editFullName-' + user.id" v-model="user.full_name" @blur="updateUser(user.id, { full_name: user.full_name })" placeholder="Enter full name">
+                        </div>
+                    </div>
+                    <p v-if="userUpdateMessage[user.id]" :class="{ 'success-message': userUpdateSuccess[user.id], 'error-message': !userUpdateSuccess[user.id] }">{{ userUpdateMessage[user.id] }}</p>
+                </div>
+            </div>
+            <p v-else class="no-records">No users found.</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
