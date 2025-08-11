@@ -58,7 +58,7 @@ new Vue({
         async fetchAuthStatus() {
             try {
                 // Using 'credentials: "include"' is crucial for sending cookies (session)
-                const response = await fetch('http://127.0.0.1:5000/api/auth/me', { credentials: 'include' });
+                const response = await fetch('https://mrcc-it-support-app-backend.onrender.com/api/auth/me', { credentials: 'include' });
                 if (response.ok) {
                     const data = await response.json();
                     this.isAuthenticated = true;
@@ -86,7 +86,7 @@ new Vue({
         },
         async handleLogin() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/auth/login', {
+                const response = await fetch('https://mrcc-it-support-app-backend.onrender.com/api/auth/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -119,7 +119,7 @@ new Vue({
         },
         async logout() {
             try {
-                await fetch('http://127.0.0.1:5000/api/auth/logout', {
+                await fetch('https://mrcc-it-support-app-backend.onrender.com/api/auth/logout', {
                     method: 'POST',
                     credentials: 'include'
                 });
@@ -159,7 +159,7 @@ new Vue({
 
         async fetchDepartments() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/departments', { credentials: 'include' });
+                const response = await fetch('http://https://mrcc-it-support-app-backend.onrender.com/api/departments', { credentials: 'include' });
                 if (response.ok) {
                     this.departments = await response.json();
                 } else {
@@ -171,7 +171,7 @@ new Vue({
         },
         async fetchIssueTypes() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/issue_types', { credentials: 'include' });
+                const response = await fetch('https://mrcc-it-support-app-backend.onrender.com/api/issue_types', { credentials: 'include' });
                 if (response.ok) {
                     this.issueTypes = await response.json();
                 } else {
@@ -185,7 +185,7 @@ new Vue({
         async submitTicket() {
             this.ticketMessage = '';
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/tickets', {
+                const response = await fetch('https://mrcc-it-support-app-backend.onrender.com/api/tickets', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -214,7 +214,7 @@ new Vue({
 
         async loadMyTickets() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/tickets/my', { credentials: 'include' });
+                const response = await fetch('https://mrcc-it-support-app-backend.onrender.com/api/tickets/my', { credentials: 'include' });
                 if (response.ok) {
                     this.myTickets = await response.json();
                 } else {
@@ -232,7 +232,7 @@ new Vue({
 
             let queryString = new URLSearchParams(this.filters).toString();
             try {
-                const response = await fetch(`http://127.0.0.1:5000/api/tickets?${queryString}`, { credentials: 'include' });
+                const response = await fetch(`https://mrcc-it-support-app-backend.onrender.com/api/tickets?${queryString}`, { credentials: 'include' });
                 if (response.ok) {
                     this.allTickets = await response.json();
                 } else {
@@ -247,7 +247,7 @@ new Vue({
 
         async viewTicketDetails(ticketId) {
             try {
-                const response = await fetch(`http://127.0.0.1:5000/api/tickets/${ticketId}`, { credentials: 'include' });
+                const response = await fetch(`https://mrcc-it-support-app-backend.onrender.com/api/tickets/${ticketId}`, { credentials: 'include' });
                 if (response.ok) {
                     this.selectedTicket = await response.json();
                     // Populate the update form with current ticket data
@@ -284,7 +284,7 @@ new Vue({
             if (!this.selectedTicket) return;
 
             try {
-                const response = await fetch(`http://127.0.0.1:5000/api/tickets/${this.selectedTicket.id}`, {
+                const response = await fetch(`https://mrcc-it-support-app-backend.onrender.com/api/tickets/${this.selectedTicket.id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -323,7 +323,7 @@ new Vue({
             }
 
             try {
-                const response = await fetch(`http://10.0.2.2:5000/api/tickets/${this.selectedTicket.id}/comments`, {
+                const response = await fetch(`https://mrcc-it-support-app-backend.onrender.com/api/tickets/${this.selectedTicket.id}/comments`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -351,7 +351,7 @@ new Vue({
         async loadUsers() {
             if (this.userRole !== 'admin') return;
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/users', { credentials: 'include' });
+                const response = await fetch('https://mrcc-it-support-app-backend.onrender.com/api/users', { credentials: 'include' });
                 if (response.ok) {
                     this.users = await response.json();
                     this.itUsers = this.users.filter(user => user.role === 'admin'); // For assigning tickets
@@ -370,7 +370,7 @@ new Vue({
             this.$set(this.userUpdateSuccess, userId, false);
 
             try {
-                const response = await fetch(`http://127.0.0.1:5000/api/users/${userId}`, {
+                const response = await fetch(`https://mrcc-it-support-app-backend.onrender.com/api/users/${userId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
